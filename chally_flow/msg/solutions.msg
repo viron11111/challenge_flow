@@ -3,6 +3,7 @@
 Header header
 string d_and_d_color
 string d_and_d_shape
+float32 d_and_d_confidence
 
 string symbol_dock_color_1
 string symbol_dock_color_2
