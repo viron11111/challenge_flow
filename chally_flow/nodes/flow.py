@@ -19,8 +19,8 @@ class flow(object):
 		rospy.loginfo("**Scan the code challenge complete**")
 
 	def detect_and_deliver(self, target_color, target_shape):
-		#rospy.loginfo("**Beginning detect and deliver challenge**")
 		if target_color != 'none' and target_shape == 'none':
+			rospy.loginfo("solving with color")
 			if target_color != 'green' and target_color != 'blue' and target_color != 'red':
 				rospy.logerr("'%s' is not a valid color for self.target_deliver_color.  Valid colors are: 'red' 'green' 'blue'", target_color)
 				self.sols.d_and_d_confidence = 0.0
@@ -29,18 +29,26 @@ class flow(object):
 				no_of_sols = 0.0
 				counter = 0
 				guess_holder = []
+				highest_confidence = 0.0
+				key_holder = 0
 				for key in range(len(self.detect_deliver_grouped)):
 					if self.detect_deliver_grouped[key][1][0] == target_color:
 						no_of_sols += 1.0
 						counter += 1
+						confidence = self.detect_deliver_grouped[key][1][2]
+						if confidence >= highest_confidence:
+							highest_confidence = confidence
+							key_holder = key
+
+						rospy.loginfo("confidence: %f", confidence)
 						guess_holder.append(self.detect_deliver_grouped[key][1][1])
 				#rospy.loginfo(guess_holder[randint(0,counter-1)])#self.detect_deliver_grouped[0][1][0])   randint(0,counter)    
 				self.sols.d_and_d_color = target_color
-				self.sols.d_and_d_shape = guess_holder[randint(0,counter-1)]
-				self.sols.d_and_d_confidence = 1.0/no_of_sols
+				self.sols.d_and_d_shape = self.detect_deliver_grouped[key_holder][1][1]
+				self.sols.d_and_d_confidence = (self.detect_deliver_grouped[key_holder][1][2]/.25)/no_of_sols
 					#rospy.loginfo("working")
 		elif target_color == 'none' and target_shape != 'none':
-			#rospy.loginfo("solving with shape")
+			rospy.loginfo("solving with shape")
 			if target_shape != 'circle' and target_shape != 'triangle' and target_shape != 'cross':
 				rospy.logerr("'%s' is not a valid shape for self.target_deliver_shape.  Valid shapes are: 'circle' 'triangle' 'cross'", target_shape)
 				self.sols.d_and_d_confidence = 0.0
@@ -48,16 +56,24 @@ class flow(object):
 				no_of_sols = 0.0
 				counter = 0
 				guess_holder = []
+				highest_confidence = 0.0
+				key_holder = 0
 				for key in range(len(self.detect_deliver_grouped)):
 					if self.detect_deliver_grouped[key][1][1] == target_shape:
 						no_of_sols += 1.0
 						counter += 1
+						confidence = self.detect_deliver_grouped[key][1][2]
+						if confidence >= highest_confidence:
+							highest_confidence = confidence
+							key_holder = key
+						rospy.loginfo("confidence: %f", confidence)
 						guess_holder.append(self.detect_deliver_grouped[key][1][0])
-				self.sols.d_and_d_color = guess_holder[randint(0,counter-1)]
+				self.sols.d_and_d_color = self.detect_deliver_grouped[key_holder][1][0]
 				self.sols.d_and_d_shape = target_shape 
-				self.sols.d_and_d_confidence = 1.0/no_of_sols						
+				self.sols.d_and_d_confidence = (self.detect_deliver_grouped[key_holder][1][2]/.25)/no_of_sols					
 				#rospy.loginfo(self.detect_deliver_grouped[key][1][0])#self.detect_deliver_grouped[0][1][0])				
 		elif target_color == 'none' and target_shape == 'none':  #Guess!!!
+			rospy.loginfo("Guessing!!!")
 			confidence_list = (self.detect_deliver_grouped[0][1][2], self.detect_deliver_grouped[1][1][2], 
 			self.detect_deliver_grouped[2][1][2], self.detect_deliver_grouped[3][1][2])
 
@@ -72,14 +88,18 @@ class flow(object):
 					#rospy.loginfo(self.sols)
 					break
 
+		elif target_color != 'none' and target_shape != 'none':
+			#rospy.loginfo("solving with two knowns")
+			confidence = 0.0
+			for i in range(0,3):
+				if self.detect_deliver_grouped[i][1][0] == target_color and self.detect_deliver_grouped[i][1][1] == target_shape:
+					confidence = self.detect_deliver_grouped[i][1][2]/0.25
+					#rospy.logwarn("confidence: %f",self.detect_deliver_grouped[i][1][2])
+			self.sols.d_and_d_color = target_color
+			self.sols.d_and_d_shape = target_shape
+			self.sols.d_and_d_confidence = confidence
 
-			#guess_no = randint(0,3)
-			#rospy.loginfo(self.detect_deliver_grouped[guess_no][1][1])
-			#rospy.loginfo(self.detect_deliver_grouped[guess_no][1][0])
 
-
-
-		#odom = Odometry()
 
 
 	def __init__(self):
@@ -91,8 +111,8 @@ class flow(object):
 		self.detect_deliver_shapes = {}
 		self.detect_deliver_colors = {}
 		self.detect_deliver_grouped = {}
-		self.target_deliver_color = 'red'
-		self.target_deliver_shape = 'none'
+		self.target_deliver_color = 'none'
+		self.target_deliver_shape = 'circle'
 
 		self.challenge_1 = rospy.get_param('~challenge_1', 'detect_deliver')
 		self.challenge_2 = rospy.get_param('~challenge_2', 'none')
@@ -106,14 +126,14 @@ class flow(object):
 		self.scan_code_color_2 = rospy.get_param('~code_color_2', 'none')
 		self.scan_code_color_3 = rospy.get_param('~code_color_3', 'none')
 
-		self.deliver_color_1 = rospy.get_param('~deliver_color_1', 'green')
+		self.deliver_color_1 = rospy.get_param('~deliver_color_1', 'none')
 		self.deliver_shape_1 = rospy.get_param('~deliver_shape_1', 'none')
 		self.deliver_color_2 = rospy.get_param('~deliver_color_2', 'none')
 		self.deliver_shape_2 = rospy.get_param('~deliver_shape_2', 'cross')
 		self.deliver_color_3 = rospy.get_param('~deliver_color_3', 'none')
 		self.deliver_shape_3 = rospy.get_param('~deliver_shape_3', 'none')
-		self.deliver_color_4 = rospy.get_param('~deliver_color_4', 'none')
-		self.deliver_shape_4 = rospy.get_param('~deliver_shape_4', 'none')
+		self.deliver_color_4 = rospy.get_param('~deliver_color_4', 'green')
+		self.deliver_shape_4 = rospy.get_param('~deliver_shape_4', 'triangle')
 
 		self.challenge_order['chal_1'] = self.challenge_1 
 		self.challenge_order['chal_2'] = self.challenge_2 
@@ -224,7 +244,7 @@ class flow(object):
 						if shape_dictionary[s][1] == shape_min:
 							self.detect_deliver_grouped[i][1][1] = shape_dictionary[s][0]
 							self.detect_deliver_grouped[i][1][2] = self.detect_deliver_grouped[i][1][2]/3
-							rospy.loginfo(self.detect_deliver_grouped)
+							#rospy.loginfo(self.detect_deliver_grouped)
 							break
 					
 				elif self.detect_deliver_grouped[i][1][0] == 'none':
@@ -232,7 +252,7 @@ class flow(object):
 						if color_dictionary[s][1] == color_min:
 							self.detect_deliver_grouped[i][1][0] = color_dictionary[s][0]
 							self.detect_deliver_grouped[i][1][2] = self.detect_deliver_grouped[i][1][2]/3
-							rospy.loginfo(self.detect_deliver_grouped)
+							#rospy.loginfo(self.detect_deliver_grouped)
 							break
 
 				none_shape = 0
