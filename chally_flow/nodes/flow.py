@@ -7,6 +7,7 @@ from random import randint
 import random 
 import math
 
+#need to figure out what to do when I have a shape but not a color or have a color but not a shape.
 
 class flow(object):
 
@@ -36,6 +37,7 @@ class flow(object):
 		color3.append(shape3)
 		color4.append(shape4)
 
+		#initial confidence values for each symbol
 		color1.append(0.25)
 		color2.append(0.25)
 		color3.append(0.25)
@@ -48,6 +50,21 @@ class flow(object):
 
 		#itemize shapes so the dictionary can be referenced using numbers instead of strings.
 		self.detect_deliver_grouped = sorted(self.detect_deliver_grouped.items(), key=operator.itemgetter(0))		
+
+		#find lonely shapes and colors
+		self.lonely_color = []
+		self.lonely_shape = []
+		for i in range(4):
+			if self.detect_deliver_grouped[i][1][0] == 'none' and self.detect_deliver_grouped[i][1][1] != 'none':
+				self.lonely_shape.append(self.detect_deliver_grouped[i][1][1])				
+			elif self.detect_deliver_grouped[i][1][0] != 'none' and self.detect_deliver_grouped[i][1][1] == 'none':
+				self.lonely_color.append(self.detect_deliver_grouped[i][1][0])
+
+		#find completely unknown sign (wildcard)
+		self.wildcard = 0
+		for i in range(4):
+			if self.detect_deliver_grouped[i][1][0] == 'none' and self.detect_deliver_grouped[i][1][1] == 'none':
+				self.wildcard += 1
 
 		#counter variables to assess what is in the D and D database.
 		none_shape = 0
@@ -244,17 +261,32 @@ class flow(object):
 		#Given target color and shape.  Provides sanity check to make sure that target color and shape are a valid solution.
 		elif target_color != 'none' and target_shape != 'none':
 			confidence = 0.0
-			for i in range(0,4):
-				if self.detect_deliver_grouped[i][1][0] == target_color and self.detect_deliver_grouped[i][1][1] == target_shape:
-					confidence = self.detect_deliver_grouped[i][1][2]/0.25
-			total_unks = (float(self.unk_shapes) + float(self.unk_colors))/2.0
-			if confidence == 0.0 and (total_unks == 1.0 or total_unks == 2.0 or total_unks == 3.0 or total_unks == 1.0):
-				rospy.logwarn("It's possible that a %s %s is one of the detect deliver challenge signs" % (target_color, target_shape))
-				confidence = 1.0/math.pow(3,total_unks) #Confidence is lower with more unknown values.  3 is used because there are 3 colors and there are 3 shapes.
+			
+			#No lonely unkowns "none"
+			#if confidence == 0.0 and ((len(self.lonely_shape) + len(self.lonely_color))) == 0:
+			#	rospy.logwarn("It's possible that a %s %s is one of the detect deliver challenge signs" % (target_color, target_shape))
+			#	confidence = 1.0/math.pow(3,total_unks) #Confidence is lower with more unknown values.  3 is used because there are 3 colors and there are 3 shapes.
+			if len(self.lonely_color) == 0 and len(self.lonely_shape) == 0 and self.wildcard == 0:
+				for i in range(4):
+					if self.detect_deliver_grouped[i][1][0] == target_color and self.detect_deliver_grouped[i][1][1] == target_shape:
+						confidence = 1.0
+
+			#with lonely unkowns "none"
+			elif len(self.lonely_color) != 0 or len(self.lonely_shape) != 0 or self.wildcard != 0:           # and ((target_color in self.lonely_color) or (target_shape in self.lonely_shape)):
+				if target_color in self.lonely_color:
+					missing = target_shape
+					rospy.logwarn("It's possible that a %s %s is one of the detect deliver challenge signs" % (target_color, target_shape))
+					confidence = 1.0/math.pow(3,len(self.lonely_color))+ 1.0/math.pow(9,self.wildcard)
+				elif target_shape in self.lonely_shape:
+					missing = target_color
+					rospy.logwarn("It's possible that a %s %s is one of the detect deliver challenge signs" % (target_color, target_shape))
+					confidence = 1.0/math.pow(3,len(self.lonely_shape))+ 1.0/math.pow(9,self.wildcard)
+				elif self.wildcard != 0:
+					rospy.logwarn("It's possible that a %s %s is one of the detect deliver challenge signs" % (target_color, target_shape))
+					confidence = 1.0/math.pow(9,self.wildcard) #Confidence is lower with more unknown values.  9 is used because there are 3 colors and there are 3 shapes.
 			elif confidence == 0.0:
 				#If this is shown, either the operator observations were wrong or entered wrong or the boat failed on scan the code or underwater shape identification.
 				rospy.logwarn("**Very unlikely that there is a %s %s on the detect deliver challenge**" % (target_color, target_shape))
-			#else:
 			
 			self.sols.d_and_d_color = target_color
 			self.sols.d_and_d_shape = target_shape
@@ -287,14 +319,16 @@ class flow(object):
 		self.scan_code_color_3 = rospy.get_param('~code_color_3', 'none')
 
 		#These values need to be manually entered based on the observed signs on detect deliver.  Otherwise, leave default as none.
+		#valid shapes: circle, cross, triangle
+		#valid colors: red, green, blue
 		self.deliver_color_1 = rospy.get_param('~deliver_color_1', 'red')
-		self.deliver_shape_1 = rospy.get_param('~deliver_shape_1', 'circle')
-		self.deliver_color_2 = rospy.get_param('~deliver_color_2', 'green')
+		self.deliver_shape_1 = rospy.get_param('~deliver_shape_1', 'cross')
+		self.deliver_color_2 = rospy.get_param('~deliver_color_2', 'blue')
 		self.deliver_shape_2 = rospy.get_param('~deliver_shape_2', 'triangle')
-		self.deliver_color_3 = rospy.get_param('~deliver_color_3', 'blue')
-		self.deliver_shape_3 = rospy.get_param('~deliver_shape_3', 'circle')
+		self.deliver_color_3 = rospy.get_param('~deliver_color_3', 'none')
+		self.deliver_shape_3 = rospy.get_param('~deliver_shape_3', 'none')
 		self.deliver_color_4 = rospy.get_param('~deliver_color_4', 'green')
-		self.deliver_shape_4 = rospy.get_param('~deliver_shape_4', 'none')
+		self.deliver_shape_4 = rospy.get_param('~deliver_shape_4', 'circle')
 
 		#Any shapes that are not operator observable ('none') in the detect and deliver challenge will be guessed in the below function.
 		self.fill_in_holes_deliver()
