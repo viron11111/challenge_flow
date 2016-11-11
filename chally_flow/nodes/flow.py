@@ -19,6 +19,9 @@ class flow(object):
 		rospy.loginfo("**Beginning scan the code challenge**")
 		rospy.loginfo("**Scan the code challenge complete**")
 
+	#conditions database, itemizes all shapes
+	#counts lonely shapes (color = none), counts lonely colors (shape = none)
+	#counts wildcards (none shape, none color)
 	def itemize_and_define(self):
 		color1 = [self.deliver_color_1]
 		shape1 = self.deliver_shape_1
@@ -34,7 +37,7 @@ class flow(object):
 		color3.append(shape3)
 		color4.append(shape4)
 
-		#initial confidence values for each symbol
+		#initial confidence values for each symbol, to used when guessing
 		color1.append(0.25)
 		color2.append(0.25)
 		color3.append(0.25)
@@ -202,18 +205,21 @@ class flow(object):
 				rospy.signal_shutdown('Invalid input for detect and deliver params')
 				self.sols.d_and_d_confidence = 0.0
 
-			for i in range(4):
+			for i in range(4): #need to make a difference between lonely and not loney
 				if self.detect_deliver_grouped[i][1][0] == target_color:
 					no_of_sols += 1.0
 					if self.detect_deliver_grouped[i][1][1] != 'none':
 						key_holder = i
 
+			#if color is not found within database, check for loney shapes (shapes with no color) or wildcards (no shape no color)
+			#Next, add 1/3 for every lonely shape and 1/9 for every wildcard, set color_not_seen bit high.
 			if no_of_sols == 0.0:
 				if len(self.lonely_shape) > 0.0 or self.wildcard > 0:
 					confidence = (1.0/3.0)*len(self.lonely_shape) + (1.0/9.0)*self.wildcard
 					shape = 'none'
 					color_not_seen = 1
 
+			#Figure out confidence value if color is detected within database
 			if no_of_sols > 0.0:				
 				confidence = 1.0/(no_of_sols + (1.0/3.0)*float(len(self.lonely_shape)) + (1.0/9.0)*float(self.wildcard))
 				shape = self.detect_deliver_grouped[key_holder][1][1]
@@ -375,11 +381,12 @@ class flow(object):
 		self.deliver_shape_1 = rospy.get_param('~deliver_shape_1', 'circle')
 		self.deliver_color_2 = rospy.get_param('~deliver_color_2', 'green')
 		self.deliver_shape_2 = rospy.get_param('~deliver_shape_2', 'cross')
-		self.deliver_color_3 = rospy.get_param('~deliver_color_3', 'red')
-		self.deliver_shape_3 = rospy.get_param('~deliver_shape_3', 'none')
+		self.deliver_color_3 = rospy.get_param('~deliver_color_3', 'green')
+		self.deliver_shape_3 = rospy.get_param('~deliver_shape_3', 'triangle')
 		self.deliver_color_4 = rospy.get_param('~deliver_color_4', 'red')
 		self.deliver_shape_4 = rospy.get_param('~deliver_shape_4', 'none')
 
+		#condition database
 		self.itemize_and_define()
 
 		self.challenge_order['chal_1'] = self.challenge_1 
