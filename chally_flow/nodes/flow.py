@@ -189,8 +189,13 @@ class flow(object):
 							cross_num += 1
 
 
+
+
 	#Function takes in operator observed signs, program's estimated missing signs (signs that are not observable), and target shape and/or color.
 	#The Function will publish the most likely shape and color and a confidence factor.  This is to be reference by Kevin's/Daniel's detect deliver program.
+
+	#Currently having a problem with 1 red none, gives confidence of 1.0, should be .33
+	#Because there is 1 of each shape already (cirle, triangle, cross), it's a toss a toss up as to which shape is next.
 	def detect_and_deliver(self, target_color, target_shape):
 		
 		#Given color but not shape.  If statement will publish color with most likely shape.
@@ -206,7 +211,7 @@ class flow(object):
 				self.sols.d_and_d_confidence = 0.0
 
 			for i in range(4): #need to make a difference between lonely and not loney
-				if self.detect_deliver_grouped[i][1][0] == target_color:
+				if self.detect_deliver_grouped[i][1][0] == target_color: #[0] is color, [1] is shape, [2] is probability
 					no_of_sols += 1.0
 					if self.detect_deliver_grouped[i][1][1] != 'none':
 						key_holder = i
@@ -256,6 +261,9 @@ class flow(object):
 			self.sols.d_and_d_color = target_color
 			self.sols.d_and_d_shape = shape #self.detect_deliver_grouped[key_holder][1][1]
 			self.sols.d_and_d_confidence = confidence#(self.detect_deliver_grouped[key_holder][1][2]/.25)/no_of_sols
+
+
+
 
 		#Given shape but not color.  If statement will publish shape with most likely color.					
 		elif target_color == 'none' and target_shape != 'none':
