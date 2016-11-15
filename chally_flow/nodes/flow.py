@@ -205,11 +205,23 @@ class flow(object):
 			key_holder = 0
 			color_not_seen = 0
 
+
+			#There are 4 cases where a desired color with a none shape is possible:
+			
+			# no weight desc
+			# 1) 2.00   Target color with shape
+			# 2) 1.33   lonely color where the color is the target color
+			# 3) 0.33   lonely shape
+			# 4) 0.11   wildcard (no color, no shape)
+
+
+			#first, check to make sure the colors are valid, no typos
 			if target_color != 'green' and target_color != 'blue' and target_color != 'red':
 				rospy.logerr("'%s' is not a valid color for self.target_deliver_color.  Valid colors are: 'red' 'green' 'blue'", target_color)
 				rospy.signal_shutdown('Invalid input for detect and deliver params')
 				self.sols.d_and_d_confidence = 0.0
 
+			#This loop finds shapes with desired color and check to see if they have a shape or are lonely (redundant)
 			for i in range(4): #need to make a difference between lonely and not loney
 				if self.detect_deliver_grouped[i][1][0] == target_color: #[0] is color, [1] is shape, [2] is probability
 					no_of_sols += 1.0
